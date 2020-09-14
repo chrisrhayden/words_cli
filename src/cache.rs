@@ -32,7 +32,7 @@ fn get_data_path() -> Result<PathBuf, Box<dyn Error>> {
     }
 }
 
-pub fn cache_word(word_data: &WordData) -> Result<(), Box<dyn Error>> {
+pub fn cache_definition(word_data: &WordData) -> Result<(), Box<dyn Error>> {
     use std::io::Write;
 
     let data_path = get_data_path()?;
@@ -207,7 +207,7 @@ mod test {
         for (_, json) in &words {
             let word_data = serde_json::from_str(json).unwrap();
 
-            let cache_result = cache_word(&word_data);
+            let cache_result = cache_definition(&word_data);
 
             if let Err(err) = cache_result {
                 eprintln!("{}", err);
@@ -244,7 +244,7 @@ mod test {
         for (_, json) in &words {
             let word_data = serde_json::from_str(json).unwrap();
 
-            let cache_result = cache_word(&word_data);
+            let cache_result = cache_definition(&word_data);
 
             if let Err(err) = cache_result {
                 eprintln!("{}", err);
@@ -281,7 +281,7 @@ mod test {
         for (_, json) in &words {
             let word_data = serde_json::from_str(json).unwrap();
 
-            let cache_result = cache_word(&word_data);
+            let cache_result = cache_definition(&word_data);
 
             if let Err(err) = cache_result {
                 eprintln!("{}", err);
@@ -293,7 +293,7 @@ mod test {
         for (_, json) in &words {
             let word_data = serde_json::from_str(json).unwrap();
 
-            let cache_result = cache_word(&word_data);
+            let cache_result = cache_definition(&word_data);
 
             if let Err(err) = cache_result {
                 eprintln!("{}", err);
