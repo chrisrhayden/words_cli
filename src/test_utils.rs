@@ -1,4 +1,4 @@
-use std::{error::Error, fs, path::PathBuf};
+use std::path::PathBuf;
 
 use tempfile::{tempdir, TempDir};
 
@@ -16,15 +16,6 @@ impl TempSetup {
         self.root = self.temp.as_ref().unwrap().path().to_owned();
 
         self.root.clone()
-    }
-
-    pub fn root_buf(&self) -> PathBuf {
-        self.root.clone()
-    }
-
-    pub fn make_fake_cache(&self) {
-        let cache_path =
-            self.root.join(".local").join("share").join("words_cli");
     }
 }
 
