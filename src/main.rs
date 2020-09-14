@@ -1,14 +1,18 @@
-mod dict;
+mod cache;
+mod dict_api;
+mod formatter;
+mod test_utils;
 mod utils;
-mod world;
 
 use std::error::Error;
 
 use clap::Clap;
 
-use dict::get_definition;
-use utils::get_tty_cols;
+use cache::{cache_word, get_from_cache};
+use dict_api::{get_definition, RequestOptions};
+use formatter::print_definition;
 
+#[allow(dead_code)]
 #[derive(Clap)]
 #[clap()]
 struct WordArgs {
@@ -18,39 +22,21 @@ struct WordArgs {
     query: String,
 }
 
-pub struct WordConf {
-    line_limit: usize,
-}
-
-// fn parse_args() -> Result<Option<usize>, Box<dyn Error>> {
-//     if env::args().len() == 1 {
-//         return Ok(None);
-//     } else if env::args().len() > 2 {
-//         return Err(Box::from("too many args"));
-//     }
-
-//     let cols = env::args().nth(1).expect("cant get arg");
-
-//     if cols.is_empty() {
-//         // NOTE: this probably shouldn't happen but idk
-//         return Err(Box::from("pleas give query"));
-//     }
-
-//     let cols = cols.trim().parse::<usize>().unwrap();
-
-//     Ok(Some(cols))
-// }
-
 fn main() -> Result<(), Box<dyn Error>> {
     let args = WordArgs::parse();
 
-    let cols = if let Some(cols) = args.columns {
-        cols
+    let cached_query = get_from_cache(&args.query)?;
+
+    if let Some(cached_query) = cached_query {
+        print_definition(&cached_query);
     } else {
-        get_tty_cols()
-    };
+        let request_opts = RequestOptions::default();
 
-    let conf = WordConf { line_limit: cols };
+        let word_data = get_definition(request_opts, &args.query)?;
 
-    get_definition(&args.query, conf)
+        cache_word(&word_data)?;
+
+        print_definition(&word_data);
+    }
+    Ok(())
 }
