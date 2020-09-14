@@ -1,6 +1,7 @@
 mod cache;
 mod dict_api;
 mod formatter;
+mod utils;
 
 #[cfg(test)]
 mod test_utils;
@@ -11,7 +12,8 @@ use clap::Clap;
 
 use cache::{cache_definition, get_from_cache};
 use dict_api::{get_definition, RequestOptions};
-use formatter::print_definition;
+use formatter::{print_definition, FormatConf};
+use utils::get_tty_cols;
 
 #[allow(dead_code)]
 #[derive(Clap)]
@@ -20,35 +22,41 @@ struct WordArgs {
     #[clap(short, long)]
     columns: Option<usize>,
     #[clap(short, long, conflicts_with = "define")]
-    suggest: bool,
+    suggest: Option<String>,
     #[clap(short, long, conflicts_with = "suggest")]
-    define: bool,
-    #[clap(required = true)]
-    query: String,
+    define: Option<String>,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = WordArgs::parse();
 
-    if args.suggest {
+    if let Some(_query) = args.suggest {
         // TODO:
         println!("suggestions aren't implemented yet");
-    } else {
-        let cached_query = get_from_cache(&args.query)?;
-
-        let word_data = if let Some(cached_query) = cached_query {
+    } else if let Some(query) = args.define {
+        let word_data = if let Some(cached_query) = get_from_cache(&query)? {
             cached_query
         } else {
             let request_opts = RequestOptions::default();
 
-            let word_data = get_definition(request_opts, &args.query)?;
+            let word_data = get_definition(request_opts, &query)?;
 
             cache_definition(&word_data)?;
 
             word_data
         };
 
-        print_definition(&word_data);
+        let mut format_conf = FormatConf::default();
+
+        format_conf.columns = if let Some(columns) = args.columns {
+            columns
+        } else {
+            get_tty_cols()
+        };
+
+        print_definition(&format_conf, &word_data);
+    } else {
+        eprintln!("nothing to do");
     }
 
     Ok(())
