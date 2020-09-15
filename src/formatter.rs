@@ -1,5 +1,6 @@
 use crate::dict_api::WordData;
 
+/// how to style the different part's of the definition
 pub struct FormatStyle {
     pub word: String,
     pub part_of_speech: String,
@@ -8,6 +9,7 @@ pub struct FormatStyle {
     pub example: String,
     pub synonyms_title: String,
     pub synonyms: String,
+    // this will more or less be the same i guess
     pub reset: String,
 }
 
@@ -26,10 +28,18 @@ impl Default for FormatStyle {
     }
 }
 
+/// format information when printing out the definition
+///
+/// `columns` will try and break at the nearest word going backwards, zero will
+///           ignore formating
+/// `indent_by` will the amount of spaces each part will be indented by
+/// `format_style` is the style for each segment
+/// `search_limit` is the amount of characters to search before giving up
 pub struct FormatConf {
     pub columns: usize,
     pub indent_by: usize,
     pub format_style: FormatStyle,
+    pub search_limit: usize,
 }
 
 impl Default for FormatConf {
@@ -38,6 +48,7 @@ impl Default for FormatConf {
             columns: 0,
             indent_by: 2,
             format_style: Default::default(),
+            search_limit: 10,
         }
     }
 }
@@ -49,32 +60,42 @@ fn break_line(
     spaces: &str,
     line: &str,
 ) -> Vec<String> {
-    const SEARCH_LIMIT: usize = 10;
-
     let mut output: Vec<String> = Vec::new();
 
+    // end of the segment
     let mut end;
+    // begging of new segment
     let mut start = 0;
 
     let line_len = line.len();
 
+    // if start gets over line_break then the we have prosed the end if the line
     while start < line_len {
         end = start + line_break;
 
+        // if end is greater then line break then we are at the end segment, the
+        // next `start = end` will make sure we break the loop
         let n_line = if end > line_len {
             line.get(start..).expect("cant get the rest of the line")
         } else {
+            // grab a segment from the string to search
             let cur_line = line.get(start..end).expect("out of bounds");
 
-            for (i, c) in cur_line.chars().rev().take(SEARCH_LIMIT).enumerate()
-            {
+            // the search_iter
+            let back_line_search =
+                cur_line.chars().rev().take(config.search_limit).enumerate();
+
+            for (i, c) in back_line_search {
                 if c == ' ' {
+                    // move back the amount of characters before the first space
                     end = end - i;
 
+                    // we found a space so end the loop
                     break;
                 }
             }
 
+            // get the real segment
             line.get(start..end)
                 .expect("out of bounds, something is wrong")
         };
@@ -86,6 +107,7 @@ fn break_line(
 
         output.push(n_line);
 
+        // now start the next iteration at the current ending point
         start = end;
     }
 
@@ -94,6 +116,8 @@ fn break_line(
 
 macro_rules! format_line {
     ($config:expr, $style:expr, $spaces:expr, $line:expr) => {
+        // if columns is zero or the line with the given spaces is too long to
+        // fit in the columns
         if $config.columns != 0
             && ($spaces.len() + $line.len()) > $config.columns
         {
@@ -105,6 +129,8 @@ macro_rules! format_line {
                 $line,
             )
         } else {
+            // NOTE: this returns a vec even if there is only one line, there
+            // probably is a better way
             vec![format!(
                 "{}{}{}{}",
                 $spaces, $style, $line, $config.format_style.reset
@@ -117,12 +143,15 @@ macro_rules! format_line {
 }
 
 fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
+    // a vec to collect the lines
     let mut output: Vec<String> = Vec::new();
 
+    // setup the indent levels
     let spaces = " ".repeat(format_conf.indent_by);
     let def_spaces = spaces.repeat(2);
-    let example_spaces = spaces.repeat(3);
+    let exa_spaces = spaces.repeat(3);
 
+    // format the queried word
     let word = format!(
         "{}{}{}",
         format_conf.format_style.word,
@@ -157,6 +186,8 @@ fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
             output.extend(definition_lines);
 
             if let Some(ref example) = definition.example {
+                // add an empty string to output to add a new line in the
+                // formated output
                 output.push(String::new());
 
                 let example_title = format!(
@@ -171,7 +202,7 @@ fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
                 let example_lines = format_line!(
                     format_conf,
                     &format_conf.format_style.example,
-                    &example_spaces,
+                    &exa_spaces,
                     example
                 );
 
@@ -196,7 +227,7 @@ fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
                         format_line!(
                             format_conf,
                             &format_conf.format_style.synonyms,
-                            &example_spaces,
+                            &exa_spaces,
                             s
                         )
                     })
