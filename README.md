@@ -47,7 +47,7 @@ words_cli -d flagrant
 
 select from the suggestion list with fzf
 
-`words_cli -s | fzf`
+`words_cli -s flagrnt | fzf`
 
 
 use stdin instead of giving a query on the cli
