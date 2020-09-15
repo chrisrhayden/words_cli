@@ -12,3 +12,4 @@ reqwest = { version = "0.10", features = ["blocking", "json"] }
 serde_json = "1.0.57"
 serde = { version = "1.*", features = ["derive"] }
 tempfile = "3.1.0"
+ispell = "0.3.1"
