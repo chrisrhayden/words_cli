@@ -50,11 +50,7 @@ pub fn cache_definition(word_data: &WordData) -> Result<(), Box<dyn Error>> {
     let word_path = cache_path.join(word);
 
     // just overwrite for now
-    let mut word_file = if word_path.exists() {
-        fs::File::open(word_path)?
-    } else {
-        fs::File::create(word_path)?
-    };
+    let mut word_file = fs::File::create(word_path)?;
 
     word_file.write(data_str.as_bytes())?;
 
@@ -145,13 +141,13 @@ mod test {
             word_file.write(json_str.as_bytes()).unwrap();
         }
 
-        for (word, json) in &words {
+        for (word, json_str) in &words {
             let cached_word = get_from_cache(&word).unwrap();
 
             if let Some(word_data) = cached_word {
                 assert_eq!(
                     serde_json::to_string(&word_data).unwrap(),
-                    *json,
+                    *json_str,
                     "did not read from file correctly"
                 )
             }
@@ -162,7 +158,7 @@ mod test {
     }
 
     #[test]
-    fn test_get_from_cache_file_dose_not_exist() {
+    fn test_get_from_cache_dir_dose_not_exist() {
         let mut temp = TempSetup::default();
         let root_path = temp.setup();
 
@@ -184,7 +180,7 @@ mod test {
     }
 
     #[test]
-    fn test_cache_words_cache_exists() {
+    fn test_cache_words_cache_dir_exists() {
         let mut temp = TempSetup::default();
         let root_path = temp.setup();
 
@@ -204,8 +200,8 @@ mod test {
 
         let words = fake_word_strings();
 
-        for (_, json) in &words {
-            let word_data = serde_json::from_str(json).unwrap();
+        for (_, json_str) in &words {
+            let word_data = serde_json::from_str(json_str).unwrap();
 
             let cache_result = cache_definition(&word_data);
 
@@ -241,8 +237,8 @@ mod test {
 
         let words = fake_word_strings();
 
-        for (_, json) in &words {
-            let word_data = serde_json::from_str(json).unwrap();
+        for (_, json_str) in &words {
+            let word_data = serde_json::from_str(json_str).unwrap();
 
             let cache_result = cache_definition(&word_data);
 
@@ -260,7 +256,7 @@ mod test {
     }
 
     #[test]
-    fn test_cache_words_cache_overwites_files() {
+    fn test_cache_words() {
         let mut temp = TempSetup::default();
         let root_path = temp.setup();
 
@@ -278,8 +274,8 @@ mod test {
 
         let words = fake_word_strings();
 
-        for (_, json) in &words {
-            let word_data = serde_json::from_str(json).unwrap();
+        for (_, json_str) in &words {
+            let word_data = serde_json::from_str(json_str).unwrap();
 
             let cache_result = cache_definition(&word_data);
 
@@ -290,8 +286,45 @@ mod test {
             }
         }
 
-        for (_, json) in &words {
-            let word_data = serde_json::from_str(json).unwrap();
+        for (word, _) in &words {
+            let word_path = cache_path.join(word);
+            assert!(word_path.exists(), "failed to make word file");
+        }
+    }
+
+    #[test]
+    fn test_cache_words_overwites_files() {
+        use std::io::Write;
+
+        let mut temp = TempSetup::default();
+        let root_path = temp.setup();
+
+        env::set_var("HOME", &root_path.as_os_str());
+
+        let data_home = root_path.join(".local").join("share");
+
+        env::set_var("XDG_DATA_HOME", data_home.as_os_str());
+
+        let cache_path = root_path
+            .join(".local")
+            .join("share")
+            .join("words_cli")
+            .join("cache");
+
+        fs::create_dir_all(&cache_path).unwrap();
+
+        let words = fake_word_strings();
+
+        for (word, json_str) in &words {
+            let word_path = cache_path.join(word);
+
+            let mut word_file = fs::File::create(word_path).unwrap();
+
+            word_file.write(json_str.as_bytes()).unwrap();
+        }
+
+        for (_, json_str) in &words {
+            let word_data = serde_json::from_str(json_str).unwrap();
 
             let cache_result = cache_definition(&word_data);
 
