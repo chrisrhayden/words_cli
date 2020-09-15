@@ -40,8 +40,8 @@ pub fn cache_definition(word_data: &WordData) -> Result<(), Box<dyn Error>> {
 
     let cache_path = data_path.join("cache");
 
-    // make the cache dir regardless, this should only get this far if we are
-    // using either XDG_DATA_HOME or HOME hopefully
+    // make the cache dir regardless, this should only get this far if either
+    // XDG_DATA_HOME or HOME exist, hopefully
     if !cache_path.exists() {
         fs::create_dir_all(&cache_path)?;
     }
