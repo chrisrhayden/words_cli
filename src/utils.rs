@@ -1,5 +1,6 @@
 use std::process::Command;
 
+/// get the terminal columns from the tput command
 pub fn get_tty_cols() -> usize {
     use std::str;
 
