@@ -2,7 +2,7 @@
 
 ## info
 
-a cli tool and wrapper around the rust lib [ispell](https://github.com/lise-henry/rust-ispell) and [dictionaryapi](https://dictionaryapi.dev/) to provide spelling suggestions and word definitions respectively
+a cli tool and wrapper around [ispell](https://github.com/lise-henry/rust-ispell) and [dictionaryapi](https://dictionaryapi.dev/) to provide spelling suggestions and word definitions respectively
 
 ## usage
 
