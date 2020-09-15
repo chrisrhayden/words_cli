@@ -41,8 +41,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         if let Some(suggest_list) = check_spelling(&query)? {
             println!("{}", suggest_list.join("\n"));
         }
-
-        Ok(())
     } else if let Some(query) = args.define {
         let word_data = if let Some(cached_query) = get_from_cache(&query)? {
             cached_query
@@ -65,9 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         };
 
         print_definition(&format_conf, &word_data);
-
-        Ok(())
-    } else {
-        Err(Box::from("we should not be able to get get here"))
     }
+
+    Ok(())
 }
