@@ -3,6 +3,7 @@ use std::error::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Value};
 
+/// how to make the request
 pub struct RequestOptions {
     url: String,
     lang: String,
@@ -20,6 +21,7 @@ impl Default for RequestOptions {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Phonetic {
     pub text: String,
+    // the audio link
     pub audio: String,
 }
 
@@ -30,6 +32,7 @@ pub struct Definition {
     pub synonyms: Option<Vec<String>>,
 }
 
+// we are serializing from json so we need to use snake case
 #[allow(non_snake_case)]
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Meaning {
@@ -44,6 +47,7 @@ pub struct WordData {
     pub meanings: Vec<Meaning>,
 }
 
+/// get a definition from dictionaryapi
 pub fn get_definition(
     request_opts: RequestOptions,
     query: &str,
@@ -52,6 +56,10 @@ pub fn get_definition(
 
     let resp = reqwest::blocking::get(&url)
         .map_err(|e| Box::<dyn Error>::from(e.to_string()))?;
+
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Err(Box::from("No Definitions Found"));
+    }
 
     let resp_array = serde_json::from_str(&resp.text()?)?;
 
@@ -63,6 +71,7 @@ pub fn get_definition(
                 .expect("no definitions in api response"),
         )
         .expect("cant parse api response in to WordData"),
+
         _ => panic!("api response structure has changed or is malformed"),
     };
 
