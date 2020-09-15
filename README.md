@@ -46,10 +46,12 @@ words_cli -d flagrant
 ### tips
 
 select from the suggestion list with fzf
+
 `words_cli -s | fzf`
 
 
 use stdin instead of giving a query on the cli
+
 `echo 'flagrnt' | words_cli -s -`
 
 ## help
