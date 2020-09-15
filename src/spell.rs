@@ -27,3 +27,35 @@ pub fn check_spelling(
 
     Ok(Some(output))
 }
+
+// TODO: this will break if when spelling source changes and when the spell
+// checkers change what they return
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_check_spelling_bad_word() {
+        let query = "flgrent";
+
+        let fake_suggestions = vec![
+            "flagrant",
+            "fragrant",
+            "flagrancy",
+            "flagrantly",
+            "filigreed",
+            "flagrance",
+            "filigreeing",
+            "flagellant",
+            "belligerent",
+        ];
+
+        if let Some(suggestions) = check_spelling(query).unwrap() {
+            for sug in suggestions {
+                if !fake_suggestions.contains(&sug.as_ref()) {
+                    assert!(false, "got a weird suggestion")
+                }
+            }
+        }
+    }
+}
