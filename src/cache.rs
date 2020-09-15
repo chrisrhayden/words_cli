@@ -4,6 +4,7 @@ use serde_json;
 
 use crate::dict_api::WordData;
 
+// try and use either XDG_DATA_HOME or HOME else return an error
 fn get_data_path() -> Result<PathBuf, Box<dyn Error>> {
     if let Ok(data_home) = env::var("XDG_DATA_HOME") {
         if data_home.is_empty() {
@@ -29,6 +30,9 @@ fn get_data_path() -> Result<PathBuf, Box<dyn Error>> {
     }
 }
 
+/// save a definition to the cache directory
+///
+/// this function just overwrites old definitions
 pub fn cache_definition(word_data: &WordData) -> Result<(), Box<dyn Error>> {
     use std::io::Write;
 
@@ -36,24 +40,25 @@ pub fn cache_definition(word_data: &WordData) -> Result<(), Box<dyn Error>> {
 
     let cache_path = data_path.join("cache");
 
+    // make the cache dir regardless, this should only get this far if we are
+    // using either XDG_DATA_HOME or HOME hopefully
     if !cache_path.exists() {
         fs::create_dir_all(&cache_path)?;
     }
 
-    let word = word_data.word.to_owned();
-
     let data_str = serde_json::to_string(word_data)?;
 
-    let word_path = cache_path.join(word);
+    let word_path = cache_path.join(&word_data.word);
 
-    // just overwrite for now
+    // create truncates files if they exists
     let mut word_file = fs::File::create(word_path)?;
 
-    word_file.write(data_str.as_bytes())?;
+    word_file.write_all(data_str.as_bytes())?;
 
     Ok(())
 }
 
+/// return a definition from the cache if it exists else nothing if it doesn't
 pub fn get_from_cache(query: &str) -> Result<Option<WordData>, Box<dyn Error>> {
     use std::io::Read;
 
@@ -68,6 +73,7 @@ pub fn get_from_cache(query: &str) -> Result<Option<WordData>, Box<dyn Error>> {
 
         query_file.read_to_string(&mut query_string)?;
 
+        // make WordData struct from a json string
         let word_data: WordData = serde_json::from_str(&query_string)?;
 
         Ok(Some(word_data))
@@ -135,7 +141,7 @@ mod test {
 
             let mut word_file = fs::File::create(word_path).unwrap();
 
-            word_file.write(json_str.as_bytes()).unwrap();
+            word_file.write_all(json_str.as_bytes()).unwrap();
         }
 
         for (word, json_str) in &words {
@@ -317,7 +323,7 @@ mod test {
 
             let mut word_file = fs::File::create(word_path).unwrap();
 
-            word_file.write(json_str.as_bytes()).unwrap();
+            word_file.write_all(json_str.as_bytes()).unwrap();
         }
 
         for (_, json_str) in &words {
