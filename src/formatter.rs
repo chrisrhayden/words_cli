@@ -18,7 +18,7 @@ impl Default for FormatStyle {
             part_of_speech: "\x1b[1m".to_string(),
             definition: "\x1b[0m".to_string(),
             example_title: "\x1b[4m".to_string(),
-            example: "\x1b[0m".to_string(),
+            example: "\x1b[3m".to_string(),
             synonyms_title: "\x1b[4m".to_string(),
             synonyms: "\x1b[0m".to_string(),
             reset: "\x1b[0m".to_string(),
@@ -36,13 +36,18 @@ impl Default for FormatConf {
     fn default() -> Self {
         Self {
             columns: 0,
-            indent_by: 4,
+            indent_by: 2,
             format_style: Default::default(),
         }
     }
 }
 
-fn break_line(line_break: usize, spaces: &str, line: &str) -> Vec<String> {
+fn break_line(
+    line_break: usize,
+    line_style: &str,
+    spaces: &str,
+    line: &str,
+) -> Vec<String> {
     const SEARCH_LIMIT: usize = 10;
 
     let mut output: Vec<String> = Vec::new();
@@ -56,8 +61,7 @@ fn break_line(line_break: usize, spaces: &str, line: &str) -> Vec<String> {
         end = start + line_break;
 
         let n_line = if end > line_len {
-            line.get(start..start + (line_len - start))
-                .expect("cant get the rest of the line")
+            line.get(start..).expect("cant get the rest of the line")
         } else {
             let cur_line = line.get(start..end).expect("out of bounds");
 
@@ -74,7 +78,7 @@ fn break_line(line_break: usize, spaces: &str, line: &str) -> Vec<String> {
                 .expect("out of bounds, something is wrong")
         };
 
-        let n_line = format!("{}{}", spaces, n_line);
+        let n_line = format!("{}{}{}", spaces, line_style, n_line);
 
         output.push(n_line);
 
@@ -84,109 +88,20 @@ fn break_line(line_break: usize, spaces: &str, line: &str) -> Vec<String> {
     output
 }
 
-fn format_word(format_conf: &FormatConf, line: &str) -> String {
-    format!(
-        "{}{}{}",
-        format_conf.format_style.word, line, format_conf.format_style.reset
-    )
-}
-
-fn format_part_of(
-    format_conf: &FormatConf,
-    spaces: &str,
-    part_of_speech: &str,
-) -> String {
-    format!(
-        "{}{}{}{}",
-        spaces,
-        format_conf.format_style.part_of_speech,
-        part_of_speech,
-        format_conf.format_style.reset
-    )
-}
-
-fn format_definition(
-    config: &FormatConf,
-    spaces: &str,
-    line: &str,
-) -> Vec<String> {
-    let full_len = spaces.len() + line.len();
-
-    if full_len > config.columns {
-        let break_in_to = config.columns - spaces.len();
-
-        break_line(break_in_to, spaces, line)
-    } else {
-        vec![format!(
-            "{}{}{}{}",
-            spaces,
-            config.format_style.definition,
-            line,
-            config.format_style.reset
-        )]
-    }
-}
-
-fn format_example_title(format_conf: &FormatConf, spaces: &str) -> String {
-    format!(
-        "{}{}example{}",
-        spaces,
-        format_conf.format_style.example_title,
-        format_conf.format_style.reset
-    )
-}
-
-fn format_example(
-    config: &FormatConf,
-    spaces: &str,
-    line: &str,
-) -> Vec<String> {
-    let full_len = spaces.len() + line.len();
-
-    if full_len > config.columns {
-        let break_in_to = config.columns - spaces.len();
-
-        break_line(break_in_to, spaces, line)
-    } else {
-        vec![format!(
-            "{}{}{}{}",
-            spaces,
-            config.format_style.example,
-            line,
-            config.format_style.reset
-        )]
-    }
-}
-
-fn format_synonyms_title(format_conf: &FormatConf, spaces: &str) -> String {
-    format!(
-        "{}{}synonyms{}",
-        spaces,
-        format_conf.format_style.synonyms_title,
-        format_conf.format_style.reset
-    )
-}
-
-fn format_synonyms(
-    config: &FormatConf,
-    spaces: &str,
-    line: &str,
-) -> Vec<String> {
-    let full_len = spaces.len() + line.len();
-
-    if full_len > config.columns {
-        let break_in_to = config.columns - spaces.len();
-
-        break_line(break_in_to, spaces, line)
-    } else {
-        vec![format!(
-            "{}{}{}{}",
-            spaces,
-            config.format_style.synonyms,
-            line,
-            config.format_style.reset
-        )]
-    }
+macro_rules! format_line {
+    ($config:expr, $style:expr, $spaces:expr, $line:expr) => {
+        if ($spaces.len() + $line.len()) > $config.columns {
+            break_line($config.columns - $spaces.len(), $style, $spaces, $line)
+        } else {
+            vec![format!(
+                "{}{}{}{}",
+                $spaces, $style, $line, $config.format_style.reset
+            )]
+        }
+    };
+    ($style:expr, $reset:expr, $spaces:expr, $line:expr,) => {
+        format_line!($style, $reset, $spaces, $line)
+    };
 }
 
 fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
@@ -196,23 +111,33 @@ fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
     let def_spaces = spaces.repeat(2);
     let example_spaces = spaces.repeat(3);
 
-    let word = format_word(format_conf, &word_data.word);
+    let word = format!(
+        "{}{}{}",
+        format_conf.format_style.word,
+        &word_data.word,
+        format_conf.format_style.reset,
+    );
 
     output.push(word);
 
     let meanings_len = word_data.meanings.len();
 
     for (i, meaning) in word_data.meanings.iter().enumerate() {
-        let part_of =
-            format_part_of(format_conf, &spaces, &meaning.partOfSpeech);
+        let part_of_speech_titles = format_line!(
+            format_conf,
+            &format_conf.format_style.part_of_speech,
+            &spaces,
+            &meaning.partOfSpeech,
+        );
 
-        output.push(part_of);
+        output.extend(part_of_speech_titles);
 
         let definition_len = meaning.definitions.len();
 
         for (i, definition) in meaning.definitions.iter().enumerate() {
-            let definition_lines = format_definition(
+            let definition_lines = format_line!(
                 &format_conf,
+                &format_conf.format_style.definition,
                 &def_spaces,
                 &definition.definition,
             );
@@ -222,13 +147,21 @@ fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
             if let Some(ref example) = definition.example {
                 output.push(String::new());
 
-                let example_title =
-                    format_example_title(format_conf, &def_spaces);
+                let example_title = format!(
+                    "{}{}example{}",
+                    &def_spaces,
+                    format_conf.format_style.example_title,
+                    format_conf.format_style.reset,
+                );
 
                 output.push(example_title);
 
-                let example_lines =
-                    format_example(format_conf, &example_spaces, example);
+                let example_lines = format_line!(
+                    format_conf,
+                    &format_conf.format_style.example,
+                    &example_spaces,
+                    example
+                );
 
                 output.extend(example_lines);
             }
@@ -236,17 +169,28 @@ fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
             if let Some(ref syns) = definition.synonyms {
                 output.push(String::new());
 
-                let synonyms_title =
-                    format_synonyms_title(format_conf, &def_spaces);
+                let synonyms_title = format!(
+                    "{}{}synonyms{}",
+                    def_spaces,
+                    format_conf.format_style.synonyms_title,
+                    format_conf.format_style.reset,
+                );
 
                 output.push(synonyms_title);
 
-                for syn in syns {
-                    let syn_strs =
-                        format_synonyms(format_conf, &example_spaces, syn);
+                let formatted_syns = syns
+                    .iter()
+                    .map(|s| {
+                        format_line!(
+                            format_conf,
+                            &format_conf.format_style.synonyms,
+                            &example_spaces,
+                            s
+                        )
+                    })
+                    .flatten();
 
-                    output.extend(syn_strs);
-                }
+                output.extend(formatted_syns);
             }
 
             if definition_len > 1 && i + 1 != definition_len {
