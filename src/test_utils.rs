@@ -39,10 +39,23 @@ pub fn fake_word_data() -> WordData {
         audio: "test".to_string(),
     }];
 
+    let synonyms = Some(vec![
+        "test".to_string(),
+        "test".to_string(),
+        "test".to_string(),
+        "test".to_string(),
+        "test".to_string(),
+        "test".to_string(),
+        "test".to_string(),
+        "test".to_string(),
+        "test".to_string(),
+        "test".to_string(),
+    ]);
+
     let definitions = vec![Definition {
         definition: "test definition".to_string(),
         example: Some("test example text".to_string()),
-        synonyms: None,
+        synonyms,
     }];
 
     let meanings = vec![Meaning {

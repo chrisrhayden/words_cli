@@ -35,11 +35,13 @@ impl Default for FormatStyle {
 /// `indent_by` will the amount of spaces each part will be indented by
 /// `format_style` is the style for each segment
 /// `search_limit` is the amount of characters to search before giving up
+/// `synonym_limit` is the amount of synonyms to show
 pub struct FormatConf {
     pub columns: usize,
     pub indent_by: usize,
     pub format_style: FormatStyle,
     pub search_limit: usize,
+    pub synonym_limit: usize,
 }
 
 impl Default for FormatConf {
@@ -49,6 +51,7 @@ impl Default for FormatConf {
             indent_by: 2,
             format_style: Default::default(),
             search_limit: 10,
+            synonym_limit: 5,
         }
     }
 }
@@ -223,6 +226,7 @@ fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
 
                 let formatted_syns = syns
                     .iter()
+                    .take(format_conf.synonym_limit)
                     .map(|s| {
                         format_line!(
                             format_conf,
@@ -260,6 +264,27 @@ mod test {
     use super::*;
 
     use crate::test_utils::fake_word_data;
+
+    fn make_formatted_text_one() -> String {
+        "\x1b[1mtest\x1b[0m\n  \x1b[1mtest part of speech\x1b[0m\n    \
+            \x1b[0mtest definition\x1b[0m\n\n    \x1b[4mexample\x1b[0m\n      \
+            \x1b[3mtest example text\x1b[0m"
+            .to_string()
+    }
+
+    fn make_formatted_text_two() -> String {
+        let mut fake_word_string_two =
+            "\n\n    \x1b[4msynonyms\x1b[0m\n".to_string();
+
+        let test_syn = "      \x1b[0mtest\x1b[0m";
+
+        let fake_word_string_two_p2 = format!("{}\n", test_syn).repeat(4);
+
+        fake_word_string_two.push_str(&fake_word_string_two_p2);
+        fake_word_string_two.push_str(test_syn);
+
+        fake_word_string_two
+    }
 
     #[test]
     fn test_format_line_short_line_no_trailing_comma() {
@@ -384,16 +409,45 @@ mod test {
     fn test_format_word_data() {
         let fake_word = fake_word_data();
 
+        let mut fake_word_string = make_formatted_text_one();
+        fake_word_string.push_str(&make_formatted_text_two());
+
+        let fake_conf = FormatConf::default();
+
+        let word_string = format_word_data(&fake_conf, &fake_word);
+
+        assert_eq!(word_string, fake_word_string, "did not format correctly");
+    }
+
+    #[test]
+    fn test_format_word_data_synonyms_are_truncated() {
+        let fake_word = fake_word_data();
+
         // TODO: this is bad and should change
-        let fake_word_string =
-            "\x1b[1mtest\x1b[0m\n  \x1b[1mtest part of speech\x1b[0m\n    \
-            \x1b[0mtest definition\x1b[0m\n\n    \x1b[4mexample\x1b[0m\n      \
-            \x1b[3mtest example text\x1b[0m";
+        let mut fake_word_string = make_formatted_text_one();
+
+        fake_word_string.push_str(&make_formatted_text_two());
 
         let fake_conf = FormatConf::default();
 
         let word_str = format_word_data(&fake_conf, &fake_word);
 
-        assert_eq!(&word_str, fake_word_string, "did not format correctly");
+        assert_eq!(&word_str, &fake_word_string, "did not format correctly");
+    }
+
+    #[test]
+    fn test_format_word_data_no_synonyms() {
+        let fake_word = fake_word_data();
+
+        // TODO: this is bad and should change
+        let fake_word_string = make_formatted_text_one();
+
+        let mut fake_conf = FormatConf::default();
+
+        fake_conf.synonym_limit = 0;
+
+        let word_str = format_word_data(&fake_conf, &fake_word);
+
+        assert_eq!(&word_str, &fake_word_string, "did not format correctly");
     }
 }

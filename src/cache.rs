@@ -291,7 +291,10 @@ mod test {
 
         for (word, _) in &words {
             let word_path = cache_path.join(word);
-            assert!(word_path.exists(), "failed to make word file");
+            assert!(
+                word_path.exists(),
+                "cache_definition failed to make word file"
+            );
         }
     }
 

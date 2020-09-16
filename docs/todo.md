@@ -1,0 +1,3 @@
+# todo
+
+- truncate synonyms
