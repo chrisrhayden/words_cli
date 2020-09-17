@@ -1,7 +1,7 @@
 use crate::dict_api::WordData;
 
 /// how to style the different part's of the definition
-pub struct FormatStyle {
+pub struct FormatterStyle {
     pub word: String,
     pub part_of_speech: String,
     pub definition: String,
@@ -9,11 +9,10 @@ pub struct FormatStyle {
     pub example: String,
     pub synonyms_title: String,
     pub synonyms: String,
-    // this will more or less be the same i guess
     pub reset: String,
 }
 
-impl Default for FormatStyle {
+impl Default for FormatterStyle {
     fn default() -> Self {
         Self {
             word: "\x1b[1m".to_string(),
@@ -28,25 +27,44 @@ impl Default for FormatStyle {
     }
 }
 
-/// format information when printing out the definition
-///
-/// `columns` will try and break at the nearest word going backwards, zero will
-///           ignore formating
-/// `indent_by` will the amount of spaces each part will be indented by
-/// `format_style` is the style for each segment
-/// `search_limit` is the amount of characters to search before giving up
-/// `synonym_limit` is the amount of synonyms to show
-pub struct FormatConf {
+pub struct FormatterConfig {
+    pub style: bool,
+    pub formatting: bool,
+    pub format_style: FormatterStyle,
     pub columns: usize,
     pub indent_by: usize,
-    pub format_style: FormatStyle,
     pub search_limit: usize,
     pub synonym_limit: usize,
 }
 
-impl Default for FormatConf {
+impl FormatterConfig {
+    pub fn clear_style(&mut self) {
+        self.style = false;
+        self.format_style.word = String::new();
+        self.format_style.part_of_speech = String::new();
+        self.format_style.definition = String::new();
+        self.format_style.example_title = String::new();
+        self.format_style.example = String::new();
+        self.format_style.synonyms_title = String::new();
+        self.format_style.synonyms = String::new();
+        self.format_style.reset = String::new();
+    }
+
+    pub fn clear_formating(&mut self) {
+        self.formatting = false;
+        self.columns = 0;
+        self.indent_by = 0;
+        self.search_limit = 0;
+        // this is probably good, idk
+        self.synonym_limit = 100;
+    }
+}
+
+impl Default for FormatterConfig {
     fn default() -> Self {
         Self {
+            style: true,
+            formatting: true,
             columns: 0,
             indent_by: 2,
             format_style: Default::default(),
@@ -57,7 +75,7 @@ impl Default for FormatConf {
 }
 
 fn break_line(
-    config: &FormatConf,
+    config: &FormatterConfig,
     line_break: usize,
     line_style: &str,
     spaces: &str,
@@ -145,7 +163,10 @@ macro_rules! format_line {
     };
 }
 
-fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
+fn format_word_data(
+    format_conf: &FormatterConfig,
+    word_data: &WordData,
+) -> String {
     // a vec to collect the lines
     let mut output: Vec<String> = Vec::new();
 
@@ -155,14 +176,14 @@ fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
     let exa_spaces = spaces.repeat(3);
 
     // format the queried word
-    let word = format!(
-        "{}{}{}",
-        format_conf.format_style.word,
+    let word = format_line!(
+        format_conf,
+        &format_conf.format_style.word,
+        "",
         &word_data.word,
-        format_conf.format_style.reset,
     );
 
-    output.push(word);
+    output.extend(word);
 
     let meanings_len = word_data.meanings.len();
 
@@ -189,18 +210,20 @@ fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
             output.extend(definition_lines);
 
             if let Some(ref example) = definition.example {
-                // add an empty string to output to add a new line in the
-                // formated output
-                output.push(String::new());
+                if format_conf.formatting {
+                    // add an empty string to output to add a new line in the
+                    // formated output
+                    output.push(String::new());
+                }
 
-                let example_title = format!(
-                    "{}{}example{}",
+                let example_title = format_line!(
+                    format_conf,
+                    &format_conf.format_style.example_title,
                     &def_spaces,
-                    format_conf.format_style.example_title,
-                    format_conf.format_style.reset,
+                    "example",
                 );
 
-                output.push(example_title);
+                output.extend(example_title);
 
                 let example_lines = format_line!(
                     format_conf,
@@ -212,48 +235,60 @@ fn format_word_data(format_conf: &FormatConf, word_data: &WordData) -> String {
                 output.extend(example_lines);
             }
 
-            if let Some(ref syns) = definition.synonyms {
-                output.push(String::new());
+            // NOTE: if expr && if let ... is nightly / experimental i guess
+            if format_conf.synonym_limit > 0 {
+                if let Some(ref syns) = definition.synonyms {
+                    if format_conf.formatting {
+                        output.push(String::new());
+                    }
 
-                let synonyms_title = format!(
-                    "{}{}synonyms{}",
-                    def_spaces,
-                    format_conf.format_style.synonyms_title,
-                    format_conf.format_style.reset,
-                );
+                    let synonyms_title = format!(
+                        "{}{}synonyms{}",
+                        def_spaces,
+                        format_conf.format_style.synonyms_title,
+                        format_conf.format_style.reset,
+                    );
 
-                output.push(synonyms_title);
+                    output.push(synonyms_title);
 
-                let formatted_syns = syns
-                    .iter()
-                    .take(format_conf.synonym_limit)
-                    .map(|s| {
-                        format_line!(
-                            format_conf,
-                            &format_conf.format_style.synonyms,
-                            &exa_spaces,
-                            s
-                        )
-                    })
-                    .flatten();
+                    let formatted_syns = syns
+                        .iter()
+                        .take(format_conf.synonym_limit)
+                        .map(|s| {
+                            format_line!(
+                                format_conf,
+                                &format_conf.format_style.synonyms,
+                                &exa_spaces,
+                                s
+                            )
+                        })
+                        .flatten();
 
-                output.extend(formatted_syns);
+                    output.extend(formatted_syns);
+                }
             }
 
-            if definition_len > 1 && i + 1 != definition_len {
+            if format_conf.formatting
+                && definition_len > 1
+                && i + 1 != definition_len
+            {
                 output.push(String::new());
             }
         }
 
-        if meanings_len > 1 && i + 1 != meanings_len {
+        if format_conf.formatting && meanings_len > 1 && i + 1 != meanings_len {
             output.push(String::new());
         }
     }
 
-    output.join("\n")
+    if format_conf.formatting {
+        output.join("\n")
+    } else {
+        output.join(" ")
+    }
 }
 
-pub fn print_definition(format_conf: &FormatConf, word_data: &WordData) {
+pub fn print_definition(format_conf: &FormatterConfig, word_data: &WordData) {
     let word_str = format_word_data(format_conf, word_data);
 
     println!("{}", word_str);
@@ -286,9 +321,22 @@ mod test {
         fake_word_string_two
     }
 
+    fn make_fake_word_text_no_formatting() -> String {
+        let mut fake_word_string_one =
+            "test test part of speech test definition \
+            example test example text synonyms"
+                .to_string();
+
+        let test_syns = " test".repeat(10);
+
+        fake_word_string_one.push_str(&test_syns);
+
+        fake_word_string_one.to_string()
+    }
+
     #[test]
     fn test_format_line_short_line_no_trailing_comma() {
-        let mut conf = FormatConf::default();
+        let mut conf = FormatterConfig::default();
 
         let line_break = 21;
 
@@ -311,7 +359,7 @@ mod test {
 
     #[test]
     fn test_format_line_short_line_trailing_comma() {
-        let mut conf = FormatConf::default();
+        let mut conf = FormatterConfig::default();
 
         let line_break = 20;
 
@@ -334,7 +382,7 @@ mod test {
 
     #[test]
     fn test_format_line_long_line_with_spaces() {
-        let mut conf = FormatConf::default();
+        let mut conf = FormatterConfig::default();
 
         let line_break = 20;
 
@@ -374,7 +422,7 @@ mod test {
 
     #[test]
     fn test_format_line_long_line_without_spaces() {
-        let mut conf = FormatConf::default();
+        let mut conf = FormatterConfig::default();
 
         let line_break = 20;
 
@@ -412,7 +460,7 @@ mod test {
         let mut fake_word_string = make_formatted_text_one();
         fake_word_string.push_str(&make_formatted_text_two());
 
-        let fake_conf = FormatConf::default();
+        let fake_conf = FormatterConfig::default();
 
         let word_string = format_word_data(&fake_conf, &fake_word);
 
@@ -428,7 +476,7 @@ mod test {
 
         fake_word_string.push_str(&make_formatted_text_two());
 
-        let fake_conf = FormatConf::default();
+        let fake_conf = FormatterConfig::default();
 
         let word_str = format_word_data(&fake_conf, &fake_word);
 
@@ -442,12 +490,85 @@ mod test {
         // TODO: this is bad and should change
         let fake_word_string = make_formatted_text_one();
 
-        let mut fake_conf = FormatConf::default();
+        let mut fake_conf = FormatterConfig::default();
 
         fake_conf.synonym_limit = 0;
 
         let word_str = format_word_data(&fake_conf, &fake_word);
 
         assert_eq!(&word_str, &fake_word_string, "did not format correctly");
+    }
+
+    #[test]
+    fn test_clear_formating_and_style() {
+        let mut formatter_config = FormatterConfig::default();
+
+        formatter_config.clear_formating();
+
+        assert_eq!(formatter_config.columns, 0, "did not clear columns");
+        assert_eq!(formatter_config.indent_by, 0, "didn not clear indent_by");
+        assert_eq!(
+            formatter_config.search_limit, 0,
+            "did not clear search_limit"
+        );
+        assert_eq!(
+            formatter_config.synonym_limit, 100,
+            "didn not clear synonym_limit"
+        );
+
+        formatter_config.clear_style();
+
+        assert!(
+            formatter_config.format_style.word.is_empty(),
+            "did not clear word"
+        );
+        assert!(
+            formatter_config.format_style.part_of_speech.is_empty(),
+            "did not clear part_of_speech"
+        );
+        assert!(
+            formatter_config.format_style.definition.is_empty(),
+            "did not clear definition"
+        );
+        assert!(
+            formatter_config.format_style.example_title.is_empty(),
+            "did not clear example_title"
+        );
+        assert!(
+            formatter_config.format_style.example.is_empty(),
+            "did not clear example"
+        );
+        assert!(
+            formatter_config.format_style.synonyms_title.is_empty(),
+            "did not clear synonyms_title"
+        );
+        assert!(
+            formatter_config.format_style.synonyms.is_empty(),
+            "did not clear synonyms"
+        );
+        // this will more or less be the same i guess
+        assert!(
+            formatter_config.format_style.reset.is_empty(),
+            "did not clear reset"
+        );
+    }
+
+    // doing both formatting and style makes checking the string easier
+    #[test]
+    fn test_format_word_data_no_formating_and_style() {
+        let fake_word = fake_word_data();
+
+        let fake_word_string = make_fake_word_text_no_formatting();
+
+        let mut fake_conf = FormatterConfig::default();
+
+        fake_conf.formatting = false;
+
+        fake_conf.clear_formating();
+        fake_conf.clear_style();
+
+        let word_string = format_word_data(&fake_conf, &fake_word);
+
+        assert_eq!(word_string, fake_word_string, "did not format correctly");
     }
 }
