@@ -12,6 +12,8 @@ use std::{error::Error, io};
 
 use clap::Clap;
 
+use atty::Stream;
+
 use crate::{
     cache::{cache_definition, get_from_cache},
     config::get_user_config,
@@ -162,7 +164,7 @@ impl WordAction {
             };
         }
 
-        if args.no_style || !format_conf.style {
+        if args.no_style || !format_conf.style || atty::is(Stream::Stdout) {
             format_conf.clear_style();
         }
 
