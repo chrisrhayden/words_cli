@@ -164,7 +164,7 @@ impl WordAction {
             };
         }
 
-        if args.no_style || !format_conf.style || atty::is(Stream::Stdout) {
+        if args.no_style || !format_conf.style || !atty::is(Stream::Stdout) {
             format_conf.clear_style();
         }
 
