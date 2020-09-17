@@ -13,3 +13,5 @@ serde_json = "1.0.57"
 serde = { version = "1.*", features = ["derive"] }
 tempfile = "3.1.0"
 ispell = "0.3.1"
+toml = "0.5.6"
+atty = "0.2.14"
