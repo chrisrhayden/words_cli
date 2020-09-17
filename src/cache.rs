@@ -1,34 +1,8 @@
-use std::{env, error::Error, fs, path::PathBuf};
+use std::{error::Error, fs};
 
 use serde_json;
 
-use crate::dict_api::WordData;
-
-// try and use either XDG_DATA_HOME or HOME else return an error
-fn get_data_path() -> Result<PathBuf, Box<dyn Error>> {
-    if let Ok(data_home) = env::var("XDG_DATA_HOME") {
-        if data_home.is_empty() {
-            return Err(Box::from(
-                "XDG_DATA_HOME not set correctly and is empty",
-            ));
-        }
-
-        Ok(PathBuf::from(data_home).join("words_cli"))
-    } else if let Ok(val) = env::var("HOME") {
-        if val.is_empty() {
-            return Err(Box::from("HOME not set correctly and is empty"));
-        }
-
-        Ok(PathBuf::from(val)
-            .join(".local")
-            .join("share")
-            .join("words_cli"))
-    } else {
-        Err(Box::from(
-            "environment variables HOME and XDG_DATA_HOME are not set",
-        ))
-    }
-}
+use crate::{dict_api::WordData, utils::get_data_path};
 
 /// save a definition to the cache directory
 ///
@@ -86,35 +60,9 @@ pub fn get_from_cache(query: &str) -> Result<Option<WordData>, Box<dyn Error>> {
 mod test {
     use super::*;
 
+    use std::env;
+
     use crate::test_utils::{fake_word_strings, TempSetup};
-
-    #[test]
-    fn test_get_cache_path() {
-        env::set_var("XDG_DATA_HOME", "test");
-
-        let path = get_data_path().unwrap();
-
-        assert_eq!(
-            path,
-            PathBuf::from("test/words_cli"),
-            "did not make path correctly"
-        )
-    }
-
-    #[test]
-    fn test_get_cache_path_no_var_data() {
-        env::set_var("XDG_DATA_HOME", "");
-
-        if let Err(err) = get_data_path() {
-            assert_eq!(
-                err.to_string(),
-                "XDG_DATA_HOME not set correctly and is empty",
-                "got a different error then expected "
-            )
-        } else {
-            assert!(false, "some how got data in env var")
-        }
-    }
 
     #[test]
     fn test_get_from_cache_files_exists() {
