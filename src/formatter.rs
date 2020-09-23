@@ -28,6 +28,7 @@ impl Default for FormatterStyle {
 }
 
 pub struct FormatterConfig {
+    pub print: bool,
     pub style: bool,
     pub formatting: bool,
     pub format_style: FormatterStyle,
@@ -63,6 +64,7 @@ impl FormatterConfig {
 impl Default for FormatterConfig {
     fn default() -> Self {
         Self {
+            print: true,
             style: true,
             formatting: true,
             columns: 0,
