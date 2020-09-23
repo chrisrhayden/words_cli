@@ -60,14 +60,24 @@ use stdin instead of giving a query on the cli
 words_cli
 a tool for words
 
-NOTE: you can specify stdin by giving a -
+NOTE: you can specify stdin by giving a - as the query
 
 USAGE:
-    words_cli [OPTIONS]
+    words_cli [FLAGS] [OPTIONS]
 
 FLAGS:
     -h, --help
             Prints help information
+
+    -F, --no-formatting
+            dont format output
+
+            this will just print everything out as one line
+    -n, --no-print
+            dont print output
+
+    -S, --no-style
+            dont print style escape sequences
 
     -V, --version
             Prints version information
@@ -78,9 +88,12 @@ OPTIONS:
             columns to align definition text
 
             this will make the definition text stay within the specified columns
+    -C, --config <config>
+            supply a config path
+
     -d, --define <define>
             print word definition
 
     -s, --suggest <suggest>
-            print word suggestions
+            print word suggestions or the entered word if its already correct
 ```
